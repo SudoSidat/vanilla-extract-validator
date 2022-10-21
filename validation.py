@@ -155,7 +155,7 @@ def feeds_present_validation(feeds_not_found):
         else:
             validation_result.append('Pass')
         
-    return (validation_result)
+    return validation_result
 
 def get_headers(delimiter, file):
     '''Checks first line from file for "Account" If found then headers are valid,
@@ -205,6 +205,7 @@ def check_required_headers(headers_list, file):
     '''   
     headers_not_found = []
     headers_to_rename = []
+    headers_result = []
     headers_list = headers_list
     file = file
     rent_account_contains = 'acc'
@@ -229,7 +230,8 @@ def check_required_headers(headers_list, file):
     rent_arrangements_or3 = ["ArrangementAmount","AgreementAmount"]       
     rent_balances_required = ["AccountReference","CurrentBalance"]
     rent_transactions_required = ["AccountReference","TransactionDate",
-                            "TransactionCode","TransactionAmount"]          
+                            "TransactionCode","TransactionAmount"]   
+    feed_tracker = []       
      
     for each_feed in check_file_contains:
         if each_feed.lower() in file.lower():
@@ -244,6 +246,8 @@ def check_required_headers(headers_list, file):
                 headers_to_rename.append(c)
             else:
                 headers_not_found.append(c)
+                feed_tracker.append(c + ' present in rent.accounts?')
+                headers_result.append('Fail')
     elif (file == rent_actions_contains):
         for c in rent_actions_required:
             if c in headers_list:
@@ -251,7 +255,10 @@ def check_required_headers(headers_list, file):
             elif c.lower() in lower_headers_list:
                 headers_to_rename.append(c)
             else:
-                headers_not_found.append(c)      
+                headers_not_found.append(c)     
+                feed_tracker.append(c + ' present in rent.actions?')
+                headers_result.append('Fail')
+ 
     elif file == rent_arrangements_contains:
         for c in rent_arr_tenants_required:
             if c in headers_list:
@@ -259,16 +266,25 @@ def check_required_headers(headers_list, file):
             elif c.lower() in lower_headers_list:
                 headers_to_rename.append(c)
             else:
-                headers_not_found.append(c)    
+                headers_not_found.append(c)                    
+                feed_tracker.append(c + ' present in rent.arrangements?')
+                headers_result.append('Fail')
         check_start_date = any(item in rent_arrangements_or for item in headers_list)
         if check_start_date is False:
             headers_not_found.append(rent_arrangements_or[0])
+            feed_tracker.append(c + ' present in rent.arrangements?')
+            headers_result.append('Fail')
+
         check_code = any(item in rent_arrangements_or2 for item in headers_list)
         if check_code is False:
             headers_not_found.append(rent_arrangements_or2[0])
+            feed_tracker.append(c + ' present in rent.arrangements?')
+            headers_result.append('Fail')
         check_amount = any(item in rent_arrangements_or3 for item in headers_list)
         if check_amount is False:
             headers_not_found.append(rent_arrangements_or3[0])
+            feed_tracker.append(c + ' present in rent.arrangements?')
+            headers_result.append('Fail')
     elif file == rent_balances_contains:
         for c in rent_balances_required:
             if c in headers_list:
@@ -277,6 +293,8 @@ def check_required_headers(headers_list, file):
                 headers_to_rename.append(c)
             else:
                 headers_not_found.append(c) 
+                feed_tracker.append(c + ' present in rent.balances?')
+                headers_result.append('Fail')
     elif file == rent_tenants_contains:
         for c in rent_arr_tenants_required:
             if c in headers_list:
@@ -284,7 +302,9 @@ def check_required_headers(headers_list, file):
             elif c.lower() in lower_headers_list:
                 headers_to_rename.append(c)
             else:
-                headers_not_found.append(c) 
+                headers_not_found.append(c)
+                feed_tracker.append(c + ' present in rent.tenants?')
+                headers_result.append('Fail') 
     elif file == rent_transactions_contains:
         for c in rent_transactions_required:
             if c in headers_list:
@@ -293,12 +313,15 @@ def check_required_headers(headers_list, file):
                 headers_to_rename.append(c)
             else:
                 headers_not_found.append(c) 
+                feed_tracker.append(c + ' present in rent.transactions?')
+                headers_result.append('Fail')
+
     if headers_not_found:
         print('------------------------------------------------------------"')
         print('Headers not found: ' + str(headers_not_found))
         print('------------------------------------------------------------"')
     
-    return headers_not_found, headers_to_rename
+    return headers_result, feed_tracker, headers_not_found, headers_to_rename
 
 def initialise_dataframe(file, delimiter):
     ''' Creates Pandas dataframe from csv data read, parmeters include removing any non-ascii
@@ -308,10 +331,7 @@ def initialise_dataframe(file, delimiter):
     df = pd.read_csv(file, skipinitialspace = True, encoding ='utf-8', encoding_errors = 'backslashreplace', converters = {'AccountReference' : lambda x: str(x)}, sep = delimiter, keep_default_na=False)
     return df
 
-
-def create_validation_df(col1, col2, val2):
-    val1 = ['Is rent.accounts present?','Is rent.actions present?','Is rent.arrangements present?','Is rent.balances present?',
-            'Is rent.tenants present?','Is rent.transactions present?']
+def create_validation_df(col1, col2, val1, val2):
     d = {col1: val1, col2: val2}
     df = pd.DataFrame(data=d)    
     print(df)
@@ -522,14 +542,20 @@ def controller(file_contains, filename_write):
 
 def controller_all_files():
     list_of_files = []
+    val1 = ['Is rent.accounts present?','Is rent.actions present?','Is rent.arrangements present?','Is rent.balances present?',
+            'Is rent.tenants present?','Is rent.transactions present?']
     feeds_not_found, files_dictionary = auto_detected_all_files()
-    create_validation_df('Task', 'Result', feeds_present_validation(feeds_not_found))
+    validation_result_array = feeds_present_validation(feeds_not_found)
 
     for f in files_dictionary:
         file = f
         delimiter = auto_detected_delimiter(file)
         headers_list = get_headers(delimiter, file)
-        check_row_length(delimiter, file, headers_list)
+        headers_result, feed_tracker, missing_headers, rename_headers = check_required_headers(headers_list, file)
+        print (feed_tracker,missing_headers)
+        val1 = val1 + feed_tracker
+        validation_result_array = validation_result_array + headers_result
+        #check_row_length(delimiter, file, headers_list)
         #missing_headers, rename_headers = check_required_headers(headers_list, file)
         #df = initialise_dataframe(file, delimiter)
         #headers_rename(rename_headers,df)
@@ -542,5 +568,7 @@ def controller_all_files():
     #for f in list_of_files:
        # print(f + ': Data transformation complete.')
     #print('------------------------------------------------------------"')
+    create_validation_df('Task', 'Result', val1, validation_result_array)
+
 if __name__ == "__main__":
     main()
