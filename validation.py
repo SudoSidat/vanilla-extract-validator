@@ -97,11 +97,12 @@ def auto_detected_all_files():
     rent_balances = 'balan'
     rent_tenants = 'tena'
     rent_transactions = 'trans'
+    rent_uc = 'uc'
     
-    check_feeds_not_found = ['rent.accounts','rent.actions','rent.arrangements','rent.balances','rent.tenants','rent.transactions']
+    check_feeds_not_found = ['rent.accounts','rent.actions','rent.arrangements','rent.balances','rent.tenants','rent.transactions','rent.uc']
     feeds = {}
     feeds_not_found = []
-    check_file_contains = [rent_account,rent_actions,rent_arrangements,rent_balances,rent_tenants,rent_transactions]
+    check_file_contains = [rent_account,rent_actions,rent_arrangements,rent_balances,rent_tenants,rent_transactions,rent_uc]
     
     for file in os.listdir('.'):
         for file_name_check in check_file_contains:
@@ -117,7 +118,9 @@ def auto_detected_all_files():
                 elif file_name_check == rent_tenants:
                     feeds[file] = 'rent.tenants'               
                 elif file_name_check == rent_transactions:
-                    feeds[file] = 'rent.transactions'               
+                    feeds[file] = 'rent.transactions' 
+                elif file_name_check == rent_uc:
+                    feeds[file] = 'rent.uc'                    
             else:
                 next
 
@@ -135,7 +138,7 @@ def auto_detected_all_files():
 
 def feeds_present_validation(feeds_not_found):
     
-    check_feeds_not_found = ['rent.accounts','rent.actions','rent.arrangements','rent.balances','rent.tenants','rent.transactions']
+    check_feeds_not_found = ['rent.accounts','rent.actions','rent.arrangements','rent.balances','rent.tenants','rent.transactions', 'rent.uc']
     feeds_not_found = feeds_not_found
     validation_result = []
 
@@ -151,6 +154,8 @@ def feeds_present_validation(feeds_not_found):
         elif x == 'rent.tenants' and x in feeds_not_found:
             validation_result.append('Fail')
         elif x == 'rent.transactions' and x in feeds_not_found:
+            validation_result.append('Fail')
+        elif x == 'rent.uc' and x in feeds_not_found:
             validation_result.append('Fail')
         else:
             validation_result.append('Pass')
@@ -214,9 +219,11 @@ def check_required_headers(headers_list, file):
     rent_balances_contains = 'balan'
     rent_tenants_contains = 'tena'
     rent_transactions_contains = 'trans'
+    rent_uc_contains = 'uc'
 
     check_file_contains = [rent_account_contains,rent_actions_contains,rent_arrangements_contains,
-                            rent_balances_contains,rent_tenants_contains,rent_transactions_contains]
+                            rent_balances_contains,rent_tenants_contains,rent_transactions_contains,
+                            rent_uc_contains]
 
     rent_account_required = ["AccountReference","HousingOfficerName",
                             "Patch","TenureType","TenureTypeCode",
@@ -231,6 +238,7 @@ def check_required_headers(headers_list, file):
     rent_balances_required = ["AccountReference","CurrentBalance"]
     rent_transactions_required = ["AccountReference","TransactionDate",
                             "TransactionCode","TransactionAmount"]   
+    rent_uc_required = ["AccountReference","UCStartDate","UCFlag"]
     feed_tracker = []       
      
     for each_feed in check_file_contains:
@@ -315,7 +323,16 @@ def check_required_headers(headers_list, file):
                 headers_not_found.append(c) 
                 feed_tracker.append(c + ' present in rent.transactions?')
                 headers_result.append('Fail')
-
+    elif file == rent_uc_contains:
+        for c in rent_uc_required:
+            if c in headers_list:
+                continue
+            elif c.lower() in lower_headers_list:
+                headers_to_rename.append(c)
+            else:
+                headers_not_found.append(c) 
+                feed_tracker.append(c + ' present in rent.uc?')
+                headers_result.append('Fail')
     if headers_not_found:
         print('------------------------------------------------------------"')
         print('Headers not found: ' + str(headers_not_found))
@@ -543,7 +560,7 @@ def controller(file_contains, filename_write):
 def controller_all_files():
     list_of_files = []
     val1 = ['Is rent.accounts present?','Is rent.actions present?','Is rent.arrangements present?','Is rent.balances present?',
-            'Is rent.tenants present?','Is rent.transactions present?']
+            'Is rent.tenants present?','Is rent.transactions present?','Is rent.uc present?']
     feeds_not_found, files_dictionary = auto_detected_all_files()
     validation_result_array = feeds_present_validation(feeds_not_found)
 
